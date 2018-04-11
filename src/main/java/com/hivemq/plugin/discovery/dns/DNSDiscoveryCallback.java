@@ -3,12 +3,11 @@ package com.hivemq.plugin.discovery.dns;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.hivemq.spi.callback.cluster.ClusterNodeAddress;
-import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,49 +20,60 @@ import org.slf4j.LoggerFactory;
  */
 public class DNSDiscoveryCallback implements com.hivemq.spi.callback.cluster.ClusterDiscoveryCallback {
 
-    private static final Logger Log = LoggerFactory.getLogger(DNSDiscoveryCallback.class);
-    private int clusterPort; // all pods will use the same config and port
+    private static final Logger LOGGER = LoggerFactory.getLogger(DNSDiscoveryCallback.class);
+    private static int ClusterPort; // all pods will use the same config and port
     private static String ServiceName;
+    private List<ClusterNodeAddress> LastClusterNodes = new ArrayList<>();
 
     @Override
     public void init(String nodeid, ClusterNodeAddress cna) {
-        this.clusterPort = cna.getPort();
-        Log.info("This node runs on host " + cna.getHost() + " and listens on port " + cna.getPort() + ". The cluster-ID is " + nodeid);
+        LOGGER.info("This node runs on host " + cna.getHost() + " and listens on port " + cna.getPort() + ". The cluster-ID is " + nodeid);
+        DNSDiscoveryCallback.ClusterPort = cna.getPort();
 
         ServiceName = System.getenv("SERVICE_NAME");
-        Log.info("DNS-based cluster discovery using SERVICE_HOSTNAME " + ServiceName);
+        LOGGER.info("DNS-based cluster discovery using SERVICE_HOSTNAME " + ServiceName);
     }
 
     @Override
     public ListenableFuture<List<ClusterNodeAddress>> getNodeAddresses() {
-        Log.debug("List of cluster node addresses requested via ClusterDiscoveryCallback!");
+        LOGGER.debug("List of cluster node addresses requested via ClusterDiscoveryCallback!");
 
-        List<ClusterNodeAddress> clusterNodes = new ArrayList<>();
-        InetAddress[] ips = null;
+        List<ClusterNodeAddress> ClusterNodes = new ArrayList<>();
 
+        // check if we can resolve the IPs for our serviceName
         try {
-            // check if we can resolve the IPs for our serviceName
-            //ips = InetAddress.getAllByName(ServiceName);                            
-            ips = InetAddress.getAllByName(ServiceName);
+            LOGGER.debug("Resolving all IPs of for hostname " + ServiceName);
+            Arrays.stream(InetAddress.getAllByName(ServiceName)).
+                    sorted(new InetAddressComparator()).
+                    map(inetAddress -> new ClusterNodeAddress(inetAddress.getHostAddress(), DNSDiscoveryCallback.ClusterPort)).
+                    collect(Collectors.toCollection(() -> ClusterNodes));
         } catch (UnknownHostException ex) {
-            java.util.logging.Logger.getLogger(DNSDiscoveryCallback.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.warn(ex.getMessage());
         }
 
-        for (InetAddress addr : ips) {
-            clusterNodes.add(new ClusterNodeAddress(addr.getHostAddress(), this.clusterPort));
+        String PreviousNodes = joinListOfNodes(LastClusterNodes);
+        String CurrentNodes = joinListOfNodes(ClusterNodes);
+
+        // Let's see if anything even changed
+        if (PreviousNodes.equals(CurrentNodes)) {
+            LOGGER.debug("List of cluster nodes did not change since last lookup  - " + CurrentNodes);
+        } else {
+            LOGGER.info("List of cluster nodes changed! Previous: {} || Current: {}", PreviousNodes, CurrentNodes);
+            LastClusterNodes = ClusterNodes; // Remember the last set of nodes
         }
 
-        String joinedClusterNodes = clusterNodes.stream()
-                .map(ClusterNodeAddress::getHost)
-                .collect(Collectors.joining(", "));
-
-        Log.info("Those are our cluster members IP addresses: {}", joinedClusterNodes);
-        return Futures.immediateFuture(clusterNodes);
+        return Futures.immediateFuture(ClusterNodes);
     }
 
     @Override
     public void destroy() {
-        Log.debug("Destroying DNSDiscoveryCallback.");
+        LOGGER.debug("Destroying DNSDiscoveryCallback.");
+    }
+
+    private String joinListOfNodes(List<ClusterNodeAddress> ClusterNodesToJoin) {
+        return ClusterNodesToJoin.stream()
+                .map(ClusterNodeAddress::getHost)
+                .collect(Collectors.joining(", "));
     }
 
 }

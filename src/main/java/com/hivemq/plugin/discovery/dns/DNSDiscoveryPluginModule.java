@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Christian Rohmann, inovex GmbH
  */
-@Information(name = "HiveMQ DNS Cluster Discovery Plugin", author = "Christian Rohmann - inovex GmbH", version = "0.1", description = "Resolve hostname / FQDN to a list of IPs to then form a common HiveMQ Cluster")
+@Information(name = "HiveMQ DNS Cluster Discovery Plugin", author = "Christian Rohmann - inovex GmbH", version = "0.3", description = "Resolve hostname / FQDN to a list of IPs to then form a HiveMQ Cluster")
 public class DNSDiscoveryPluginModule extends HiveMQPluginModule {
 
     Logger log = LoggerFactory.getLogger(DNSDiscoveryPluginModule.class);

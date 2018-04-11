@@ -4,7 +4,7 @@
   <groupId>hivemq-discovery-plugins</groupId>
   <artifactId>dns-discovery-plugin</artifactId>
   <name>dns-discovery-plugin</name>
-  <version>0.0.1</version>
+  <version>0.3</version>
   <description>HiveMQ DNS-based Cluster Discovery</description>
   <developers>
     <developer>
@@ -57,7 +57,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-release-plugin</artifactId>
-        <version>3.0.0-SNAPSHOT</version>
+        <version>3.0-SNAPSHOT</version>
       </plugin>
     </plugins>
   </build>
