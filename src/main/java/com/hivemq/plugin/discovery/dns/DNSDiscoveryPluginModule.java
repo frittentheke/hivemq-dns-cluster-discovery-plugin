@@ -24,7 +24,7 @@ public class DNSDiscoveryPluginModule extends HiveMQPluginModule {
      */
     @Override
     protected void configurePlugin() {
-        log.debug("Configuration of K8DiscoveryPluginModule called!");
+        log.debug("Configuration of DNSDiscoveryPluginModule called!");
     }
 
     /**
